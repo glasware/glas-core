@@ -1,7 +1,7 @@
 package glas
 
 import (
-	pb "github.com/ingcr3at1on/glas/proto"
+	pb "github.com/glasware/glas-core/proto"
 )
 
 const (

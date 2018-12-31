@@ -3,7 +3,7 @@ package ansi
 import (
 	"testing"
 
-	"github.com/ingcr3at1on/glas/internal/test"
+	"github.com/glasware/glas-core/internal/test"
 )
 
 func TestAnsi(t *testing.T) {

@@ -1,4 +1,4 @@
-package glas // import "github.com/ingcr3at1on/glas"
+package glas // import "github.com/glasware/glas-core"
 
 import (
 	"context"
@@ -7,8 +7,8 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/ingcr3at1on/glas/internal"
-	pb "github.com/ingcr3at1on/glas/proto"
+	"github.com/glasware/glas-core/internal"
+	pb "github.com/glasware/glas-core/proto"
 	"github.com/pkg/errors"
 	telnet "github.com/reiver/go-telnet"
 )

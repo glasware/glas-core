@@ -1,8 +1,8 @@
 # Glas
 
-[![goreportcard](https://goreportcard.com/badge/github.com/ingcr3at1on/glas)](https://github.com/ingcr3at1on/glas)
+[![goreportcard](https://goreportcard.com/badge/github.com/glasware/glas-core)](https://github.com/glasware/glas-core)
 
-Telnet based MUD client framework. User-facing implementations can be found in the cmd package.
+Telnet based MUD client framework.
 
 Issues and pull requests are welcome.
 

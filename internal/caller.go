@@ -6,7 +6,7 @@ import (
 	"regexp"
 	"strings"
 
-	pb "github.com/ingcr3at1on/glas/proto"
+	pb "github.com/glasware/glas-core/proto"
 	"github.com/pkg/errors"
 	telnet "github.com/reiver/go-telnet"
 )
