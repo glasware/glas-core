@@ -2,67 +2,87 @@ package glas
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"strings"
+
+	"github.com/glasware/glas-core/internal/telnet"
 )
 
-func (g *Glas) routineHandleInput(ctx context.Context, cancel context.CancelFunc) error {
-	// fmt.Println("routineHandleInput")
-
-	errCh := make(chan error, 1)
-	go func() {
-		for {
-			in := <-g.config.Input
-			if in != nil {
-				b, err := g.handleInput(cancel, in.Data)
-				if err != nil {
-					errCh <- err
-					return
-				}
-
-				if !b && g.connected {
-					nw, err := g.pipeW.Write([]byte(in.Data))
-					if err != nil {
-						errCh <- err
-						return
-					}
-
-					if nw != len(in.Data) {
-						errCh <- io.ErrShortWrite
-						return
-					}
-				}
-			}
+func (g *Glas) handleInput(ctx context.Context, cancel context.CancelFunc, str string) error {
+	if g.cfg.Echo {
+		if err := g.writeLn(str); err != nil {
+			return err
 		}
-	}()
+	}
 
-	select {
-	case err := <-errCh:
+	if strings.HasPrefix(str, g.cfg.CommandPrefix) {
+		cmd := strings.TrimPrefix(str, g.cfg.CommandPrefix)
+		if err := g.handleCommand(ctx, cancel, cmd); err != nil {
+			return err
+		}
+
+		return nil
+	}
+
+	if g.socket != nil {
+		alias, err := g.cfg.Aliases.Check(str)
 		if err != nil {
 			return err
 		}
-	case <-ctx.Done():
-		break
+
+		if alias != nil {
+			var writer io.Writer = g.socket
+			if g.cfg.Echo {
+				writer = io.MultiWriter(g.socket, g.out)
+			}
+
+			return alias(writer)
+		}
+
+		return g.writeToTelnet([]byte(str))
 	}
 
 	return nil
 }
 
-func (g *Glas) handleInput(cancel context.CancelFunc, input string) (bool, error) {
-	if strings.HasPrefix(input, g.config.CmdPrefix) {
-		input = strings.TrimPrefix(input, g.config.CmdPrefix)
+const (
+	connect = "connect "
+)
 
-		switch {
-		case strings.Compare(input, "exit") == 0:
-			cancel()
-		case strings.HasPrefix(input, "connect"):
-			go g.startTelnet(
-				strings.TrimSpace(
-					strings.TrimPrefix(input, "connect")))
+func (g *Glas) handleCommand(ctx context.Context, _ context.CancelFunc, cmd string) error {
+	switch {
+	case strings.HasPrefix(cmd, connect):
+		if g.socket != nil {
+			if _, err := g.socket.Peek(1); err == nil {
+				if err = g.writeF("multiple connections not supported, connected to %s\n", g.socket.Addr()); err != nil {
+					return err
+				}
+				return nil
+			}
 		}
 
-		return true, nil
+		addr := strings.TrimPrefix(cmd, connect)
+
+		if err := g.writeLn("connecting to " + addr); err != nil {
+			return err
+		}
+
+		var err error
+		g.socket, err = telnet.Dial(addr)
+		if err != nil {
+			return fmt.Errorf("telnet.Dial, %s -- %w", addr, err)
+		}
+
+		var readCtx context.Context
+		readCtx, g.readCancel = context.WithCancel(ctx)
+		go g.readSocket(readCtx)
+
+	case cmd == "disconnect":
+		if g.readCancel != nil {
+			g.readCancel()
+		}
 	}
 
-	return false, nil
+	return nil
 }
