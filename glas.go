@@ -1,16 +1,18 @@
-package glas // import "github.com/glasware/glas-core"
+package glas
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"strings"
-	"sync"
 
 	"github.com/glasware/glas-core/internal"
-	pb "github.com/glasware/glas-core/proto"
-	"github.com/pkg/errors"
-	telnet "github.com/reiver/go-telnet"
+	"github.com/glasware/glas-core/internal/actions"
+	"github.com/glasware/glas-core/internal/config"
+	"github.com/glasware/glas-core/internal/connection"
+	"github.com/glasware/glas-core/internal/connection/telnet"
+	"github.com/glasware/glas-core/internal/input"
 )
 
 var (
@@ -35,105 +37,138 @@ var (
 )
 
 type (
-	// Glas is a mud client backend.
-	Glas struct {
-		config    *Config
-		errCh     chan error
-		terrCh    chan error
-		pipeW     *io.PipeWriter
-		pipeR     *io.PipeReader
-		connected bool
+	Glas interface {
+		Start(context.Context) error
+		SendInput(string)
+	}
+
+	glas struct {
+		in   chan string
+		out  io.Writer
+		conn *connection.Connection
+
+		errCh chan error
+
+		cfg *config.Config
+
+		inputHandler input.Handler
 	}
 )
 
-// New returns a new instance of Glas.
-func New(config *Config) (*Glas, error) {
-	if err := config.Validate(); err != nil {
-		return nil, errors.Wrap(err, "config.Validate")
+var (
+	_ Glas             = new(glas)
+	_ internal.Surface = new(glas)
+)
+
+func New(in chan string, out io.Writer, cfgPath string, options ...Option) (Glas, error) {
+	g := glas{
+		in:  in,
+		out: out,
 	}
 
-	g := Glas{
-		config: config,
-		errCh:  make(chan error, 1),
-		terrCh: make(chan error),
-	}
+	g.inputHandler = input.New(&g)
 
-	g.pipeR, g.pipeW = io.Pipe()
+	var err error
+	g.cfg, err = config.Load(cfgPath, options...)
+	if err != nil {
+		return nil, fmt.Errorf("config.Load -- %w", err)
+	}
 
 	return &g, nil
 }
 
-// Start the Glas client.
-func (g *Glas) Start(ctx context.Context, cancel context.CancelFunc) error {
-	if ctx == nil {
-		return ErrNilContext
+func (g *glas) Start(ctx context.Context) error {
+	if err := g.WriteLn(welcome); err != nil {
+		return err
 	}
 
-	if cancel == nil {
-		return ErrNilCancelF
+	if err := g.WriteLn("The command prefix is set to " + g.cfg.Prefix()); err != nil {
+		return err
 	}
 
-	g.config.Output <- &pb.Output{Data: welcome}
-	// Add help and mention it here...
-	g.config.Output <- &pb.Output{Data: fmt.Sprintf("\n\nThe current command prefix is '%s'\n", g.config.CmdPrefix)}
+	return g.eval(ctx)
+}
 
-	var wg sync.WaitGroup
+func (g *glas) SendInput(str string) {
+	g.in <- str
+}
 
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-
-		if err := g.routineHandleInput(ctx, cancel); err != nil {
-			g.errCh <- errors.Wrap(err, "routineHandleInput")
-		}
-
-		// fmt.Println("routineHandleInput finished")
-	}()
-
-	select {
-	case <-ctx.Done():
-		break
-	case err := <-g.errCh:
-		if err != nil {
-			return err
-		}
-	case err := <-g.terrCh:
-		if err != nil {
-			g.config.Output <- &pb.Output{Data: fmt.Sprintf("%s\n", err.Error())}
-		}
+func (g *glas) Echo() bool {
+	if conn := g.Connection(); conn != nil {
+		return conn.Echo() && g.cfg.Echo()
 	}
 
-	wg.Wait()
+	return g.cfg.Echo()
+}
+
+func (g *glas) CommandPrefix() string {
+	return g.cfg.Prefix()
+}
+
+func (g *glas) Connection() *connection.Connection {
+	return g.conn
+}
+
+func (g *glas) NewConnection(ctx context.Context, addr string) error {
+	var err error
+	g.conn, err = connection.New(addr)
+	if err != nil {
+		return err
+	}
+
+	go g.readSocket(ctx)
 	return nil
 }
 
-func (g *Glas) startTelnet(addr string) {
-	// FIXME: support tls
-	conn, err := telnet.DialTo(addr)
-	if err != nil {
-		g.terrCh <- err
-		return
-	}
-	defer conn.Close()
+func (g *glas) Write(b []byte) (int, error) {
+	return g.out.Write(b)
+}
 
-	caller, err := internal.NewCaller(&internal.CallerConfig{
-		In:  g.pipeR,
-		Out: g.config.Output,
-	}, g.terrCh)
-	if err != nil {
-		g.terrCh <- err
-		return
-	}
+func (g *glas) WriteLn(str string) error {
+	_, err := g.Write([]byte(str + "\n"))
+	return err
+}
 
-	client := telnet.Client{
-		Caller: caller,
-	}
+func (g *glas) WriteF(format string, v ...any) error {
+	str := fmt.Sprintf(format, v...)
+	_, err := g.Write([]byte(str))
+	return err
+}
 
-	g.connected = true
+func (g *glas) Aliases() *actions.Aliases {
+	return g.cfg.Aliases()
+}
 
-	err = client.Call(conn)
-	if err != nil {
-		g.terrCh <- errors.Wrapf(err, "client.Call : %s", conn.RemoteAddr().String())
-		return
+func (g *glas) readSocket(ctx context.Context) {
+	if conn := g.Connection(); conn != nil {
+		for {
+			if !conn.Connected() {
+				return
+			}
+
+			select {
+			case <-ctx.Done():
+				return
+			default:
+				byt := make([]byte, 10)
+				n, err := conn.Read(byt)
+				if err != nil && !errors.Is(err, telnet.ErrClosed) {
+					g.errCh <- err
+					return
+				}
+
+				if n > 0 {
+					_, err = g.Write(byt)
+					if err != nil {
+						g.errCh <- err
+						return
+					}
+				}
+
+				if errors.Is(err, telnet.ErrClosed) {
+					return
+				}
+			}
+		}
 	}
 }
