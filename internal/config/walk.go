@@ -1,33 +1,54 @@
 package config
 
 import (
+	"fmt"
 	"io/fs"
 	"path/filepath"
 	"strings"
 
+	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclparse"
+	"github.com/spf13/afero"
 )
 
-func (c Config) walk(abs string, parser *hclparse.Parser) error {
-	return filepath.WalkDir(abs, func(path string, d fs.DirEntry, err error) error {
+func (c *Config) walk(abs string, parser *hclparse.Parser) error {
+	ok, err := afero.DirExists(c.afs, abs)
+	if err != nil {
+		return fmt.Errorf("afero.DirExists(%s) -- %w", abs, err)
+	}
+
+	if !ok {
+		return nil
+	}
+
+	return afero.Walk(c.afs, abs, func(path string, info fs.FileInfo, err error) error {
 		if err != nil /*&& !errors.Is(err, os.ErrNotExist)*/ {
 			return err
 		}
 
-		if d.Name() == filepath.Base(abs) {
+		if info.Name() == filepath.Base(abs) {
 			return nil
 		}
 
-		if d.IsDir() {
+		if info.IsDir() {
 			return nil
 		}
 
+		byt, err := afero.ReadFile(c.afs, path)
+		if err != nil {
+			return fmt.Errorf("afero.ReadFile -- %w", err)
+		}
+
+		var diags hcl.Diagnostics
 		switch {
-		case strings.HasSuffix(d.Name(), ".hcl"):
-			_, err = parser.ParseHCLFile(path)
-		case strings.HasSuffix(d.Name(), ".json"):
-			_, err = parser.ParseJSONFile(path)
+		case strings.HasSuffix(info.Name(), ".hcl"):
+			_, diags = parser.ParseHCL(byt, path)
+		case strings.HasSuffix(info.Name(), ".json"):
+			_, diags = parser.ParseJSON(byt, path)
 		}
-		return err
+		if diags.HasErrors() {
+			return diags
+		}
+		return nil
 	})
 }

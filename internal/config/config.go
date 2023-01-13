@@ -2,31 +2,35 @@ package config
 
 import (
 	"fmt"
-	"path/filepath"
 
 	"github.com/glasware/glas-core/internal/actions"
 	"github.com/glasware/glas-core/internal/actions/aliases"
+	"github.com/spf13/afero"
 )
 
 const defaultCommandPrefix = "g^"
 
 type Config struct {
-	CommandPrefix string
-	Echo          bool
-	Aliases       actions.Aliases
+	prefix  string
+	echo    bool
+	aliases *actions.Aliases
+	afs     afero.Fs
 }
 
 func Load(path string, options ...Option) (*Config, error) {
-	abs, err := filepath.Abs(path)
-	if err != nil {
-		return nil, fmt.Errorf("filepath.Abs(%s) -- %w", path, err)
+	cfg := &Config{
+		prefix:  defaultCommandPrefix,
+		echo:    true,
+		aliases: new(actions.Aliases),
 	}
 
-	cfg := new(Config)
-	cfg.CommandPrefix = defaultCommandPrefix
 	cfg.handleOptions(options...)
 
-	s, err := cfg.load(abs)
+	if cfg.afs == nil {
+		cfg.afs = afero.NewOsFs()
+	}
+
+	s, err := cfg.load(path)
 	if err != nil {
 		return nil, err
 	}
@@ -36,7 +40,7 @@ func Load(path string, options ...Option) (*Config, error) {
 			return nil, fmt.Errorf("regex aliases not currently supported")
 		}
 
-		cfg.Aliases.AddAlias(&aliases.Glob{
+		cfg.aliases.AddAlias(&aliases.Glob{
 			Name:     alias.Name,
 			Pattern:  alias.Pattern,
 			Template: alias.Template,
@@ -44,4 +48,16 @@ func Load(path string, options ...Option) (*Config, error) {
 	}
 
 	return cfg, nil
+}
+
+func (c Config) Prefix() string {
+	return c.prefix
+}
+
+func (c Config) Echo() bool {
+	return c.echo
+}
+
+func (c Config) Aliases() *actions.Aliases {
+	return c.aliases
 }

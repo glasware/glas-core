@@ -30,6 +30,10 @@ func (a *Glob) Match(str string) (bool, []any, error) {
 
 	n, err := fmt.Sscanf(str, a.Pattern, values...)
 	if err != nil {
+		if err.Error() == "input does not match format" {
+			return false, nil, nil
+		}
+
 		return false, nil, err
 	}
 
@@ -53,6 +57,10 @@ func (a *Glob) Action(in ...any) actions.Action {
 
 		return nil
 	}
+}
+
+func (a *Glob) String() string {
+	return fmt.Sprintf("%s | %s = %s", a.Name, a.Pattern, a.Template)
 }
 
 func (a *Glob) values(in ...any) []any {

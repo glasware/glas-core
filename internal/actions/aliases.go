@@ -1,6 +1,9 @@
 package actions
 
-import "sync"
+import (
+	"strings"
+	"sync"
+)
 
 type (
 	Aliases struct {
@@ -11,6 +14,7 @@ type (
 	Alias interface {
 		Match(str string) (bool, []any, error)
 		Action(values ...any) Action
+		String() string
 	}
 )
 
@@ -20,7 +24,13 @@ func (a *Aliases) AddAlias(alias Alias) {
 	a.mux.Unlock()
 }
 
-func (a Aliases) Check(str string) (Action, error) {
+func (a *Aliases) Len() int {
+	a.mux.RLock()
+	defer a.mux.RUnlock()
+	return len(a.list)
+}
+
+func (a *Aliases) Check(str string) (Action, error) {
 	a.mux.RLock()
 	defer a.mux.RUnlock()
 
@@ -38,4 +48,17 @@ func (a Aliases) Check(str string) (Action, error) {
 	}
 
 	return nil, nil
+}
+
+func (a *Aliases) List() string {
+	a.mux.RLock()
+	defer a.mux.RUnlock()
+
+	aliases := make([]string, 0, len(a.list)+1)
+	aliases = append(aliases, "Current aliases:")
+	for _, alias := range a.list {
+		aliases = append(aliases, alias.String())
+	}
+
+	return strings.Join(aliases, "\n")
 }
