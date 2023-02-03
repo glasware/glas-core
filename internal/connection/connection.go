@@ -84,7 +84,7 @@ func (c Connection) Peek(n int) ([]byte, error) {
 	if !c.connected {
 		return nil, nil
 	}
-	
+
 	p, err := c.sock.Peek(n)
 	if err != nil {
 		c.connected = false

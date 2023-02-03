@@ -7,9 +7,11 @@ import (
 	"github.com/glasware/glas-core/internal"
 )
 
-type Handler struct {
-	surface internal.Surface
-}
+type (
+	Handler struct {
+		surface internal.Surface
+	}
+)
 
 func New(surface internal.Surface) Handler {
 	return Handler{

@@ -8,6 +8,15 @@ import (
 	"github.com/glasware/glas-core/internal/connection"
 )
 
+//go:generate go install github.com/golang/mock/mockgen@latest
+//go:generate mockgen -build_flags=--mod=mod -destination=./mock/mock_surface.go -package=mock github.com/glasware/glas-core/internal Surface
+
+import (
+	"errors"
+)
+
+var ErrExit = errors.New("exit")
+
 type (
 	Surface interface {
 		Echo() bool

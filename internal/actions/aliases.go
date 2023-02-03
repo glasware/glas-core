@@ -55,7 +55,7 @@ func (a *Aliases) List() string {
 	defer a.mux.RUnlock()
 
 	aliases := make([]string, 0, len(a.list)+1)
-	aliases = append(aliases, "Current aliases:")
+	aliases = append(aliases, "Aliases:")
 	for _, alias := range a.list {
 		aliases = append(aliases, alias.String())
 	}

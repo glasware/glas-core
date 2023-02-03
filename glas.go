@@ -60,6 +60,8 @@ var (
 	_ internal.Surface = new(glas)
 )
 
+var ErrExit = internal.ErrExit
+
 func New(in chan string, out io.Writer, cfgPath string, options ...Option) (Glas, error) {
 	g := glas{
 		in:  in,

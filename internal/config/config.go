@@ -5,6 +5,7 @@ import (
 
 	"github.com/glasware/glas-core/internal/actions"
 	"github.com/glasware/glas-core/internal/actions/aliases"
+	"github.com/glasware/glas-core/internal/log"
 	"github.com/spf13/afero"
 )
 
@@ -13,14 +14,21 @@ const defaultCommandPrefix = "g^"
 type Config struct {
 	prefix  string
 	echo    bool
+	logger  *log.Logger
 	aliases *actions.Aliases
 	afs     afero.Fs
 }
 
 func Load(path string, options ...Option) (*Config, error) {
+	logger, err := log.New()
+	if err != nil {
+		return nil, err
+	}
+
 	cfg := &Config{
 		prefix:  defaultCommandPrefix,
 		echo:    true,
+		logger:  logger,
 		aliases: new(actions.Aliases),
 	}
 

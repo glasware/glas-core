@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 	"strings"
+
+	"github.com/glasware/glas-core/internal"
 )
 
 const (
@@ -30,6 +32,14 @@ func (h Handler) handleCommand(ctx context.Context, cmd string) error {
 		}
 
 		h.surface.WriteLn("no connection")
+
+	case cmd == "exit":
+		return internal.ErrExit
+
+	case cmd == "alias" || cmd == "aliases":
+		if err := h.surface.WriteLn(h.surface.Aliases().List()); err != nil {
+			return err
+		}
 	}
 
 	return nil
