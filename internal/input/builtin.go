@@ -20,6 +20,7 @@ const (
 func (h Handler) handleCommand(ctx context.Context, cmd string) error {
 	switch {
 	case strings.HasPrefix(cmd, connect):
+		// FIXME: verify input.
 		if err := h.attemptConnect(ctx, strings.TrimPrefix(cmd, connect)); err != nil {
 			return err
 		}

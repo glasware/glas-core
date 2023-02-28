@@ -10,6 +10,7 @@ func (g *glas) eval(ctx context.Context) error {
 
 	g.errCh = make(chan error, 1)
 
+	// FIXME: oof, another one, do I really need to background this?!?
 	go func() {
 		for {
 			select {
@@ -25,6 +26,12 @@ func (g *glas) eval(ctx context.Context) error {
 		}
 	}()
 
+	defer func() {
+		if conn := g.Connection(); conn != nil {
+			_ = conn.Close()
+		}
+	}()
+
 	select {
 	case <-ctx.Done():
 		break
@@ -32,10 +39,6 @@ func (g *glas) eval(ctx context.Context) error {
 		if err != nil {
 			return err
 		}
-	}
-
-	if conn := g.Connection(); conn != nil {
-		_ = conn.Close()
 	}
 
 	return nil

@@ -65,10 +65,10 @@ func (mr *MockSurfaceMockRecorder) CommandPrefix() *gomock.Call {
 }
 
 // Connection mocks base method.
-func (m *MockSurface) Connection() *connection.Connection {
+func (m *MockSurface) Connection() connection.Connection {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Connection")
-	ret0, _ := ret[0].(*connection.Connection)
+	ret0, _ := ret[0].(connection.Connection)
 	return ret0
 }
 

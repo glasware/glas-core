@@ -22,7 +22,7 @@ type (
 		Echo() bool
 		CommandPrefix() string
 
-		Connection() *connection.Connection
+		Connection() connection.Connection
 		NewConnection(ctx context.Context, addr string) error
 
 		io.Writer

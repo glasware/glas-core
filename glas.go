@@ -45,7 +45,7 @@ type (
 	glas struct {
 		in   chan string
 		out  io.Writer
-		conn *connection.Connection
+		conn connection.Connection
 
 		errCh chan error
 
@@ -88,6 +88,9 @@ func (g *glas) Start(ctx context.Context) error {
 		return err
 	}
 
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
 	return g.eval(ctx)
 }
 
@@ -107,13 +110,13 @@ func (g *glas) CommandPrefix() string {
 	return g.cfg.Prefix()
 }
 
-func (g *glas) Connection() *connection.Connection {
+func (g *glas) Connection() connection.Connection {
 	return g.conn
 }
 
 func (g *glas) NewConnection(ctx context.Context, addr string) error {
 	var err error
-	g.conn, err = connection.New(addr)
+	g.conn, err = telnet.New(addr)
 	if err != nil {
 		return err
 	}
@@ -142,34 +145,33 @@ func (g *glas) Aliases() *actions.Aliases {
 }
 
 func (g *glas) readSocket(ctx context.Context) {
-	if conn := g.Connection(); conn != nil {
-		for {
-			if !conn.Connected() {
+	for {
+		conn := g.Connection()
+		if conn == nil || !conn.Connected() {
+			return
+		}
+
+		select {
+		case <-ctx.Done():
+			return
+		default:
+			byt := make([]byte, 10)
+			n, err := conn.Read(byt)
+			if err != nil && !errors.Is(err, telnet.ErrClosed) {
+				g.errCh <- err
 				return
 			}
 
-			select {
-			case <-ctx.Done():
-				return
-			default:
-				byt := make([]byte, 10)
-				n, err := conn.Read(byt)
-				if err != nil && !errors.Is(err, telnet.ErrClosed) {
+			if n > 0 {
+				_, err = g.Write(byt)
+				if err != nil {
 					g.errCh <- err
 					return
 				}
+			}
 
-				if n > 0 {
-					_, err = g.Write(byt)
-					if err != nil {
-						g.errCh <- err
-						return
-					}
-				}
-
-				if errors.Is(err, telnet.ErrClosed) {
-					return
-				}
+			if errors.Is(err, telnet.ErrClosed) {
+				return
 			}
 		}
 	}

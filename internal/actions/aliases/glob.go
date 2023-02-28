@@ -25,16 +25,16 @@ var _ actions.Alias = new(Glob)
 func (a *Glob) Match(str string) (bool, []any, error) {
 	values, err := a.valuePtrs()
 	if err != nil {
-		return false, nil, err
+		return false, nil, fmt.Errorf("valuePtrs: %w", err)
 	}
 
 	n, err := fmt.Sscanf(str, a.Pattern, values...)
 	if err != nil {
-		if err.Error() == "input does not match format" {
-			return false, nil, nil
+		if err := shouldError(err); err != nil {
+			return false, nil, fmt.Errorf("fmt.Sscanf: %w", err)
 		}
 
-		return false, nil, err
+		return false, nil, nil
 	}
 
 	if n != len(values) {
@@ -46,7 +46,10 @@ func (a *Glob) Match(str string) (bool, []any, error) {
 
 func (a *Glob) Action(in ...any) actions.Action {
 	template := fmt.Sprintf(a.Template, a.values(in...)...)
-	commands := strings.Split(template, "\n")
+	commands := strings.FieldsFunc(template, func(c rune) bool {
+		return c == '\n' || c == ';'
+	})
+
 	return func(writer io.Writer) error {
 		for _, command := range commands {
 			cmd := []byte(command)

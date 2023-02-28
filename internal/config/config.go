@@ -9,7 +9,7 @@ import (
 	"github.com/spf13/afero"
 )
 
-const defaultCommandPrefix = "g^"
+const DefaultCommandPrefix = "g^"
 
 type Config struct {
 	prefix  string
@@ -26,7 +26,7 @@ func Load(path string, options ...Option) (*Config, error) {
 	}
 
 	cfg := &Config{
-		prefix:  defaultCommandPrefix,
+		prefix:  DefaultCommandPrefix,
 		echo:    true,
 		logger:  logger,
 		aliases: new(actions.Aliases),
