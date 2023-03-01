@@ -1,6 +1,7 @@
 # Glas
 
 [![goreportcard](https://goreportcard.com/badge/github.com/glasware/glas-core)](https://github.com/glasware/glas-core)
+[![CircleCI](https://dl.circleci.com/status-badge/img/gh/glasware/glas-core/tree/master.svg?style=svg)](https://dl.circleci.com/status-badge/redirect/gh/glasware/glas-core/tree/master)
 
 Telnet based MUD client framework.
 
