@@ -7,7 +7,7 @@ version: 2.1
 jobs:
   test:
     docker:
-      - image: cimg/go:stable
+      - image: cimg/go:1.20
     steps:
       - checkout
       - run: go get .
