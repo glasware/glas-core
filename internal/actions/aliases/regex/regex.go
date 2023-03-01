@@ -1,4 +1,4 @@
-package aliases
+package regex
 
 /*
 type Regex struct {

@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	"github.com/glasware/glas-core/internal/actions"
-	"github.com/glasware/glas-core/internal/actions/aliases"
+	"github.com/glasware/glas-core/internal/actions/aliases/glob"
 	"github.com/glasware/glas-core/internal/config"
 	"github.com/glasware/glas-core/internal/connection/mock"
 	"github.com/glasware/glas-core/internal/input"
@@ -21,7 +21,7 @@ func TestInputHandler_handleAlias(t *testing.T) {
 
 	h := input.New(surface)
 
-	alias := aliases.Glob{
+	alias := glob.Alias{
 		Pattern:  "test %s",
 		Template: "foo %s",
 	}
@@ -47,7 +47,7 @@ func TestInputHandler_handleAlias(t *testing.T) {
 	surface.EXPECT().
 		Aliases().
 		Return(&m)
-	
+
 	surface.EXPECT().Echo()
 	surface.EXPECT().Connection().Return(conn)
 

@@ -1,4 +1,4 @@
-package aliases
+package glob
 
 import (
 	"bufio"
@@ -11,7 +11,7 @@ import (
 	"github.com/glasware/glas-core/internal/actions"
 )
 
-type Glob struct {
+type Alias struct {
 	Name     string
 	Pattern  string
 	Template string
@@ -20,9 +20,9 @@ type Glob struct {
 	argTypes     []reflect.Kind
 }
 
-var _ actions.Alias = new(Glob)
+var _ actions.Alias = new(Alias)
 
-func (a *Glob) Match(str string) (bool, []any, error) {
+func (a *Alias) Match(str string) (bool, []any, error) {
 	values, err := a.valuePtrs()
 	if err != nil {
 		return false, nil, fmt.Errorf("valuePtrs: %w", err)
@@ -44,7 +44,7 @@ func (a *Glob) Match(str string) (bool, []any, error) {
 	return true, values, nil
 }
 
-func (a *Glob) Action(in ...any) actions.Action {
+func (a *Alias) Action(in ...any) actions.Action {
 	template := fmt.Sprintf(a.Template, a.values(in...)...)
 	commands := strings.FieldsFunc(template, func(c rune) bool {
 		return c == '\n' || c == ';'
@@ -62,11 +62,11 @@ func (a *Glob) Action(in ...any) actions.Action {
 	}
 }
 
-func (a *Glob) String() string {
+func (a *Alias) String() string {
 	return fmt.Sprintf("%s | %s = %s", a.Name, a.Pattern, a.Template)
 }
 
-func (a *Glob) values(in ...any) []any {
+func (a *Alias) values(in ...any) []any {
 	values := make([]any, 0, len(in))
 	for _, v := range in {
 		switch nv := v.(type) {
@@ -83,7 +83,7 @@ func (a *Glob) values(in ...any) []any {
 	return values
 }
 
-func (a *Glob) valuePtrs() ([]any, error) {
+func (a *Alias) valuePtrs() ([]any, error) {
 	var err error
 	a.calcArgsOnce.Do(func() {
 		err = a.scan()
@@ -113,7 +113,7 @@ func (a *Glob) valuePtrs() ([]any, error) {
 	return values, nil
 }
 
-func (a *Glob) scan() error {
+func (a *Alias) scan() error {
 	scanner := bufio.NewScanner(strings.NewReader(a.Pattern))
 	scanner.Split(bufio.ScanWords)
 

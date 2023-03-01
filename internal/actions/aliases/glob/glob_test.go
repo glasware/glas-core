@@ -1,4 +1,4 @@
-package aliases
+package glob
 
 import (
 	"bytes"
@@ -10,12 +10,12 @@ import (
 
 func TestGlob_Match(t *testing.T) {
 	for input, tc := range map[string]struct {
-		alias       Glob
+		alias       Alias
 		shouldMatch bool
 		expected    []any
 	}{
 		"test foo": {
-			alias: Glob{
+			alias: Alias{
 				Pattern: "test %s",
 			},
 			shouldMatch: true,
@@ -27,25 +27,25 @@ func TestGlob_Match(t *testing.T) {
 			},
 		},
 		"test": {
-			alias: Glob{
+			alias: Alias{
 				Pattern: "test %s",
 			},
 			shouldMatch: false,
 		},
 		"testing": {
-			alias: Glob{
+			alias: Alias{
 				Pattern: "test %s",
 			},
 			shouldMatch: false,
 		},
 		"l": {
-			alias: Glob{
+			alias: Alias{
 				Pattern: "ll",
 			},
 			shouldMatch: false,
 		},
 		"ll": {
-			alias: Glob{
+			alias: Alias{
 				Pattern: "ll",
 			},
 			shouldMatch: true,
@@ -66,18 +66,18 @@ func TestGlob_Match(t *testing.T) {
 
 func TestGlob_Action(t *testing.T) {
 	for input, tc := range map[string]struct {
-		alias    Glob
+		alias    Alias
 		expected string
 	}{
 		"test bar": {
-			alias: Glob{
+			alias: Alias{
 				Pattern:  "test %s",
 				Template: "foo %s",
 			},
 			expected: "foo bar\n",
 		},
 		"ll": {
-			alias: Glob{
+			alias: Alias{
 				Pattern: "ll",
 				Template: `leave
 out`,
@@ -85,7 +85,7 @@ out`,
 			expected: "leave\nout\n",
 		},
 		"bb": {
-			alias: Glob{
+			alias: Alias{
 				Pattern:  "bb",
 				Template: "board boat;buy passage",
 			},

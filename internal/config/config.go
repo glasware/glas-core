@@ -4,7 +4,7 @@ import (
 	"fmt"
 
 	"github.com/glasware/glas-core/internal/actions"
-	"github.com/glasware/glas-core/internal/actions/aliases"
+	"github.com/glasware/glas-core/internal/actions/aliases/glob"
 	"github.com/glasware/glas-core/internal/log"
 	"github.com/spf13/afero"
 )
@@ -48,7 +48,7 @@ func Load(path string, options ...Option) (*Config, error) {
 			return nil, fmt.Errorf("regex aliases not currently supported")
 		}
 
-		cfg.aliases.AddAlias(&aliases.Glob{
+		cfg.aliases.AddAlias(&glob.Alias{
 			Name:     alias.Name,
 			Pattern:  alias.Pattern,
 			Template: alias.Template,

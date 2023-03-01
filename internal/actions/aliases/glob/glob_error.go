@@ -1,4 +1,4 @@
-package aliases
+package glob
 
 func shouldError(err error) error {
 	switch err.Error() {
