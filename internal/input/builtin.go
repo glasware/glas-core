@@ -28,11 +28,11 @@ func (h Handler) handleCommand(ctx context.Context, cmd string) error {
 
 	case cmd == disconnect:
 		if conn := h.surface.Connection(); conn != nil {
-			conn.Close()
+			_ = conn.Close()
 			return nil
 		}
 
-		h.surface.WriteLn("no connection")
+		_ = h.surface.WriteLn("no connection")
 
 	case cmd == "exit":
 		return internal.ErrExit
